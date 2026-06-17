@@ -32,7 +32,7 @@
   .inputbar{border-top:1px solid var(--line);padding:12px 16px}
   .inputrow{display:flex;gap:8px;align-items:flex-end}
   textarea{font-family:inherit}
-  #msg{flex:1;resize:none;border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+  #msg{flex:1;resize:vertical;min-height:150px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;
     font-size:14px;line-height:1.6;outline:none}
   #msg:focus{box-shadow:0 0 0 2px var(--accentSoft)}
   .btn{border:none;border-radius:12px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer}
@@ -76,7 +76,7 @@
 
     <div class="inputbar" id="inputbar">
       <div class="inputrow">
-        <textarea id="msg" rows="1" placeholder="ここに入力（Enterで送信 / Shift+Enterで改行）"></textarea>
+        <textarea id="msg" rows="6" placeholder="ここに入力（Enterで送信 / Shift+Enterで改行）"></textarea>
         <button class="btn primary" id="send">送信</button>
       </div>
       <div class="meta">
@@ -318,7 +318,7 @@ function reset(){
   resultEl.style.display="none"; resultEl.innerHTML="";
   inputbar.style.display="block";
   inputbar.innerHTML =
-    '<div class="inputrow"><textarea id="msg" rows="1" placeholder="ここに入力（Enterで送信 / Shift+Enterで改行）"></textarea>'+
+    '<div class="inputrow"><textarea id="msg" rows="6" placeholder="ここに入力（Enterで送信 / Shift+Enterで改行）"></textarea>'+
     '<button class="btn primary" id="send">送信</button></div>'+
     '<div class="meta"><span>「特になし」でも大丈夫です</span>'+
     '<button class="link" id="finishLink">もう十分／まとめる →</button></div>';
