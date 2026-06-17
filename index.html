@@ -1,327 +1,95 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>きょうの、ちいさな発見</title>
-<style>
-  :root{
-    --paper:#F6F3EC; --surface:#FFFFFF; --ink:#232B36; --inkSoft:#5A6573;
-    --line:#E6E1D6; --accent:#2F7E68; --accentSoft:#E4EFEA; --accentDeep:#246154;
-    --amber:#C9803A; --user:#2B3543;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--paper);color:var(--ink);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic UI",Meiryo,sans-serif;
-    display:flex;justify-content:center;padding:32px 16px;min-height:100vh}
-  .wrap{width:100%;max-width:680px}
-  .eyebrow{color:var(--accent);font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px}
-  h1{font-family:Georgia,"Times New Roman",serif;font-size:24px;margin:0}
-  .sub{color:var(--inkSoft);font-size:14px;margin:4px 0 0;line-height:1.6}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;
-    box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden;margin-top:24px}
-  #chat{padding:20px;max-height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
-  .row{display:flex;gap:10px;align-items:flex-start}
-  .row.user{justify-content:flex-end}
-  .ava{flex:0 0 auto;width:28px;height:28px;border-radius:50%;background:var(--accentSoft);
-    color:var(--accentDeep);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-top:2px}
-  .bubble{border-radius:16px;padding:10px 16px;font-size:14px;line-height:1.65;max-width:85%;white-space:pre-wrap;word-break:break-word}
-  .ai .bubble{background:var(--accentSoft);border-top-left-radius:4px}
-  .user .bubble{background:var(--user);color:#F4F6F8;border-top-right-radius:4px}
-  .typing{color:var(--inkSoft);font-size:14px;font-style:italic}
-  .inputbar{border-top:1px solid var(--line);padding:12px 16px}
-  .inputrow{display:flex;gap:8px;align-items:flex-end}
-  textarea{font-family:inherit}
-  #msg{flex:1;resize:none;border:1px solid var(--line);border-radius:12px;padding:10px 12px;
-    font-size:14px;line-height:1.6;outline:none}
-  #msg:focus{box-shadow:0 0 0 2px var(--accentSoft)}
-  .btn{border:none;border-radius:12px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer}
-  .btn.primary{background:var(--accent);color:#fff}
-  .btn.primary:disabled{background:var(--line);color:var(--inkSoft);cursor:default}
-  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--inkSoft)}
-  .btn.outline{background:transparent;border:1px solid var(--accent);color:var(--accentDeep)}
-  .meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:0 2px}
-  .meta span{color:var(--inkSoft);font-size:12px}
-  .link{background:none;border:none;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;padding:0}
-  .link:disabled{opacity:.4;cursor:default}
-  .err{color:var(--amber);font-size:14px;text-align:center;margin-top:12px}
-  .reshead{background:var(--accent);color:#fff;font-weight:600;font-size:14px;padding:12px 20px}
-  .resbody{padding:16px 20px;display:flex;flex-direction:column;gap:16px}
-  .flabel{color:var(--accent);font-size:12px;font-weight:700;margin-bottom:4px}
-  .fval{font-size:14px;line-height:1.65;color:#3a4452;margin:0}
-  .fval.strong{font-size:16px;font-weight:500;color:var(--ink)}
-  .tagbox{background:var(--paper);border-radius:12px;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
-  .tagk{color:var(--inkSoft);font-size:11px}
-  .tagv{font-size:14px;font-weight:500}
-  .actions{border-top:1px solid var(--line);background:var(--paper);padding:16px 20px;display:flex;flex-wrap:wrap;gap:8px}
-  .ml-auto{margin-left:auto}
-  .copyarea{border-top:1px solid var(--line);padding:16px 20px}
-  .copyarea .hint{color:var(--inkSoft);font-size:12px;margin-bottom:6px}
-  #out{width:100%;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:8px 12px;
-    font-size:12px;line-height:1.6;font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--paper);color:var(--ink);outline:none}
-  .foot{color:var(--inkSoft);font-size:11px;text-align:center;margin-top:20px;line-height:1.6}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <header>
-    <div class="eyebrow">現場の気づきメモ</div>
-    <h1>きょうの、ちいさな発見</h1>
-    <p class="sub">会話するだけでOK。うまくまとめようとしなくて大丈夫です。</p>
-  </header>
+/**
+ * Gemini プロキシ（GAS Web App）
+ * - APIキーは Script Properties に保管し、コードにも画面にも出さない
+ * - HTML から { mode, system, messages, token } を POST で受け取り、Gemini に中継する
+ * - 一時的な混雑(503/429/500)は自動リトライ。ダメなら予備モデルへ自動切替。
+ *
+ * 【初期設定】スクリプト プロパティに
+ *   GEMINI_KEY   = （Gemini APIキー）              ← 必須
+ *   ACCESS_TOKEN = （合言葉。HTML側と同じ文字列）   ← 任意（未設定なら認証なし）
+ *
+ * 【重要】コードを書き換えたら必ず再デプロイ:
+ *   デプロイ → デプロイを管理 → 鉛筆 → バージョン「新しいバージョン」→ デプロイ
+ *   （※プロパティの変更は再デプロイ不要だが、コード変更は新バージョンが必要）
+ */
 
-  <div class="card">
-    <div id="chat"></div>
+var GEMINI_MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash']; // 先頭から順に試す（予備込み）
+var MAX_RETRY = 3;
 
-    <div class="inputbar" id="inputbar">
-      <div class="inputrow">
-        <textarea id="msg" rows="1" placeholder="ここに入力（Enterで送信 / Shift+Enterで改行）"></textarea>
-        <button class="btn primary" id="send">送信</button>
-      </div>
-      <div class="meta">
-        <span>「特になし」でも大丈夫です</span>
-        <button class="link" id="finishLink">もう十分／まとめる →</button>
-      </div>
-    </div>
-  </div>
+function doGet() {
+  return json_({ ok: true, models: GEMINI_MODELS });
+}
 
-  <div class="err" id="err" style="display:none"></div>
-  <div class="card" id="result" style="display:none"></div>
+function doPost(e) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var key = props.getProperty('GEMINI_KEY');
+    if (!key) throw new Error('GEMINI_KEY が未設定です');
 
-  <p class="foot">入力内容は要約・分類のためにAIで処理されます。</p>
-</div>
+    var req = JSON.parse(e.postData.contents); // { mode, system, messages, token }
 
-<script>
-/* ===== 設定：ここだけ書き換える ===== */
-var GAS_URL = "https://script.google.com/macros/s/AKfycbzr3A9k4JNScsmRko9ftd6aZEiXb2cAA94qljx29hvl7Wa-0vQGUustDGzCl2lBl923/exec";
-var ACCESS_TOKEN = "SIP2026"; // GASのACCESS_TOKENを設定した場合のみ同じ合言葉を入れる
-/* =================================== */
-
-var CHAT_SYSTEM = [
-"あなたは、現場で働く社員から「業務上の気づき・ファクト（事実）」を対話でやさしく引き出すインタビュアーです。相手が身構えず、普段の言葉で話せる雰囲気を作ってください。",
-"",
-"【話し方のルール】",
-"- 質問は必ず一度に1つだけ。",
-"- まず相手の発言を短く受け止める（共感・労いを1文）。例:「それは新鮮な気づきですね」「なるほど、それは大変ですね」。大げさにしない。",
-"- 返答は1〜2文。専門用語や堅い言葉は避け、敬語でフレンドリーに。",
-"- 回答が抽象的なとき（例:「忙しい」「大変」）だけ、具体的なエピソードを1〜2回までやさしく深掘りする。例:「具体的にどの作業に時間がかかっていますか？」。同じ話題を3回以上深掘りしない。",
-"- 相手が「特になし」「分からない」「これだけです」等と言ったら、深追いせず受け止めて次へ／締める。",
-"- 1回のセッションでは原則1つのファクトに集中する。",
-"- 分類タグを相手に直接たずねたり見せたりしない。会話から自然に読み取る。",
-"",
-"【締め方】",
-"「事実」「気づいたきっかけ・タイミング」「本人の気づき・感想」がだいたい把握できたら、自然なお礼の一言で締める。その締めメッセージの“最末尾”にだけ、半角で __DONE__ と付ける（内部信号。文中の他の場所では絶対に使わない）。"
-].join("\n");
-
-var FINALIZE_SYSTEM = [
-"次に渡す対話履歴を読み取り、指定スキーマのJSONだけを出力してください。前置き・後置き・説明・コードフェンスは一切不要。JSONオブジェクトのみ。値はすべて日本語。",
-"",
-'スキーマ:',
-'{',
-'  "fact_summary": "ユーザーが語った事実の簡潔な要約（1〜2文）",',
-'  "context_trigger": "気づいたきっかけやタイミングの要約",',
-'  "user_insight": "ユーザー自身の主観的な気づきや感想（一言でも可）",',
-'  "classification": {',
-'    "timing": "日常業務 / 定期処理 / 繁忙期 / トラブル / その他 から最も近いものを1つ",',
-'    "location": "社内 / 顧客接点 / 複数関係者 から最も近いものを1つ",',
-'    "domain": "業務運用 / 組織・運営 / システム / データ連携 / その他 から最も近いものを1つ",',
-'    "background_factor": "手順 / ツール / ナレッジ共有 / 体制・役割 / その他 から最も近いものを1つ",',
-'    "impact_value": "業務効率 / 顧客体験 / 品質向上 / 人材育成 / 新サービス から最も近いものを1つ"',
-'  }',
-'}',
-"判断できない分類は「その他」とする。"
-].join("\n");
-
-var GREETING = "こんにちは。最近の業務で「あれ？」と思ったことや、ちょっとした気づき・困りごとを聞かせてください。うまくまとめなくて大丈夫です。まずは、どんなことでも一言からどうぞ。";
-var CLASS_LABELS = {timing:"発生タイミング",location:"発生領域",domain:"対象ドメイン",background_factor:"背景・原因",impact_value:"影響・価値"};
-
-var messages = [{role:"assistant", content:GREETING}];
-var done = false, result = null;
-
-var chatEl = document.getElementById("chat");
-var msgEl = document.getElementById("msg");
-var sendBtn = document.getElementById("send");
-var finishLink = document.getElementById("finishLink");
-var inputbar = document.getElementById("inputbar");
-var errEl = document.getElementById("err");
-var resultEl = document.getElementById("result");
-
-function esc(s){return String(s).replace(/[&<>]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
-
-function renderChat(){
-  chatEl.innerHTML = messages.map(function(m){
-    if(m.role==="assistant"){
-      return '<div class="row ai"><div class="ava">AI</div><div class="bubble">'+esc(m.content)+'</div></div>';
+    var expected = props.getProperty('ACCESS_TOKEN');
+    if (expected && req.token !== expected) {
+      return json_({ error: 'unauthorized' });
     }
-    return '<div class="row user"><div class="bubble">'+esc(m.content)+'</div></div>';
-  }).join("");
-  chatEl.scrollTop = chatEl.scrollHeight;
+
+    var payload = {
+      systemInstruction: { parts: [{ text: req.system || '' }] },
+      contents: (req.messages || []).map(function (m) {
+        return {
+          role: (m.role === 'assistant' ? 'model' : 'user'),
+          parts: [{ text: String(m.content || '') }]
+        };
+      })
+    };
+    if (req.mode === 'finalize') {
+      payload.generationConfig = { responseMimeType: 'application/json', temperature: 0.2 };
+    }
+
+    var data = callGemini_(key, payload);
+
+    var text = '';
+    if (data.candidates && data.candidates[0] &&
+        data.candidates[0].content && data.candidates[0].content.parts) {
+      text = data.candidates[0].content.parts.map(function (p) { return p.text || ''; }).join('');
+    }
+    return json_({ text: text });
+  } catch (err) {
+    return json_({ error: String(err && err.message ? err.message : err) });
+  }
 }
 
-function showTyping(label){
-  var d=document.createElement("div");
-  d.className="row ai"; d.id="typing";
-  d.innerHTML='<div class="ava">AI</div><div class="typing">'+label+'</div>';
-  chatEl.appendChild(d); chatEl.scrollTop=chatEl.scrollHeight;
-}
-function hideTyping(){var t=document.getElementById("typing");if(t)t.remove();}
-function showErr(t){errEl.textContent=t;errEl.style.display=t?"block":"none";}
+/** モデルを順に・各モデルで数回リトライして呼ぶ */
+function callGemini_(key, payload) {
+  var lastErr = 'gemini error';
+  for (var mi = 0; mi < GEMINI_MODELS.length; mi++) {
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/'
+            + GEMINI_MODELS[mi] + ':generateContent?key=' + encodeURIComponent(key);
+    for (var attempt = 0; attempt < MAX_RETRY; attempt++) {
+      var res = UrlFetchApp.fetch(url, {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      });
+      var code = res.getResponseCode();
+      var body = res.getContentText();
+      if (code === 200) return JSON.parse(body);
 
-/* GAS 経由で Gemini を呼ぶ（text/plain でプリフライト回避） */
-function callAPI(mode, system, msgs){
-  return fetch(GAS_URL, {
-    method:"POST",
-    headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body: JSON.stringify({mode:mode, system:system, messages:msgs, token:ACCESS_TOKEN})
-  }).then(function(r){return r.json();}).then(function(d){
-    if(d.error) throw new Error(d.error);
-    return (d.text||"").trim();
-  });
-}
-
-function send(){
-  var text = msgEl.value.trim();
-  if(!text || done) return;
-  showErr("");
-  messages.push({role:"user", content:text});
-  msgEl.value=""; renderChat();
-  sendBtn.disabled=true; showTyping("考えています…");
-  callAPI("chat", CHAT_SYSTEM, messages.map(function(m){return {role:m.role,content:m.content};}))
-    .then(function(reply){
-      hideTyping();
-      var isDone = reply.indexOf("__DONE__")>=0;
-      var clean = reply.replace(/__DONE__/g,"").trim();
-      messages.push({role:"assistant", content:clean});
-      renderChat();
-      if(isDone) enterDone();
-      sendBtn.disabled=false; msgEl.focus();
-    })
-    .catch(function(e){
-      hideTyping(); sendBtn.disabled=false;
-      showErr("通信に失敗しました（"+e.message+"）。少し待って再度お試しください。");
-    });
+      lastErr = 'HTTP ' + code + ': ' + body;
+      // 一時的な混雑系はリトライ（指数的に待つ）
+      if (code === 503 || code === 429 || code === 500) {
+        Utilities.sleep(800 * (attempt + 1)); // 0.8s → 1.6s → 2.4s
+        continue;
+      }
+      // 400 など恒久エラーはリトライ無駄 → 次のモデルへ
+      break;
+    }
+  }
+  throw new Error(lastErr);
 }
 
-function enterDone(){
-  done = true;
-  inputbar.innerHTML =
-    '<div style="text-align:center;padding:8px 0">'+
-    '<p class="sub" style="margin-bottom:12px">お話ありがとうございました。内容をデータにまとめます。</p>'+
-    '<button class="btn primary" id="makeBtn">まとめを作成する</button></div>';
-  document.getElementById("makeBtn").onclick = finalize;
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }
-
-function finalize(){
-  showErr("");
-  var mk=document.getElementById("makeBtn"); if(mk){mk.disabled=true;mk.textContent="まとめています…";}
-  showTyping("まとめています…");
-  var transcript = messages.map(function(m){return (m.role==="user"?"ユーザー: ":"AI: ")+m.content;}).join("\n");
-  callAPI("finalize", FINALIZE_SYSTEM, [{role:"user", content:transcript}])
-    .then(function(raw){
-      hideTyping();
-      var s=raw.indexOf("{"), e=raw.lastIndexOf("}");
-      result = JSON.parse(raw.slice(s, e+1));
-      renderResult();
-    })
-    .catch(function(err){
-      hideTyping();
-      if(mk){mk.disabled=false;mk.textContent="まとめを作成する";}
-      showErr("まとめの生成に失敗しました（"+err.message+"）。もう一度お試しください。");
-    });
-}
-
-function plainText(r){
-  var cl=r.classification||{};
-  return [
-    "■ ファクト（事実）", r.fact_summary||"", "",
-    "■ きっかけ・タイミング", r.context_trigger||"", "",
-    "■ 私の気づき", r.user_insight||"", "",
-    "― 分析タグ ―",
-    "発生タイミング: "+(cl.timing||""),
-    "発生領域: "+(cl.location||""),
-    "対象ドメイン: "+(cl.domain||""),
-    "背景・原因: "+(cl.background_factor||""),
-    "影響・価値: "+(cl.impact_value||"")
-  ].join("\n");
-}
-
-function renderResult(){
-  if(done) inputbar.style.display="none";
-  var cl=result.classification||{};
-  var tags = Object.keys(CLASS_LABELS).map(function(k){
-    return '<div><div class="tagk">'+CLASS_LABELS[k]+'</div><div class="tagv">'+esc(cl[k]||"—")+'</div></div>';
-  }).join("");
-  resultEl.style.display="block";
-  resultEl.innerHTML =
-    '<div class="reshead">まとまりました</div>'+
-    '<div class="resbody">'+
-      '<div><div class="flabel">ファクト（事実）</div><p class="fval strong">'+esc(result.fact_summary||"—")+'</p></div>'+
-      '<div><div class="flabel">きっかけ・タイミング</div><p class="fval">'+esc(result.context_trigger||"—")+'</p></div>'+
-      '<div><div class="flabel">あなたの気づき</div><p class="fval">'+esc(result.user_insight||"—")+'</p></div>'+
-      '<button class="btn ghost" id="tagToggle" style="font-size:12px;padding:6px 12px;align-self:flex-start">分析タグ（システム用）を表示</button>'+
-      '<div id="tagbox" class="tagbox" style="display:none">'+tags+'</div>'+
-    '</div>'+
-    '<div class="actions">'+
-      '<button class="btn primary" id="copyText">コピペ用テキストをコピー</button>'+
-      '<button class="btn outline" id="copyJson">JSONをコピー</button>'+
-      '<button class="btn ghost ml-auto" id="resetBtn">別のファクトを追加</button>'+
-    '</div>'+
-    '<div class="copyarea">'+
-      '<div class="hint">うまくコピーできないときは、下の枠内をタップ→全選択してコピーしてください</div>'+
-      '<textarea id="out" rows="8" readonly></textarea>'+
-    '</div>';
-
-  document.getElementById("out").value = plainText(result);
-  document.getElementById("out").onfocus = function(){this.select();};
-  var tb=document.getElementById("tagbox"), tt=document.getElementById("tagToggle");
-  tt.onclick=function(){var open=tb.style.display!=="none";tb.style.display=open?"none":"grid";tt.textContent=open?"分析タグ（システム用）を表示":"分析タグを隠す";};
-  document.getElementById("copyText").onclick=function(){doCopy(plainText(result),this,"コピペ用テキストをコピー");};
-  document.getElementById("copyJson").onclick=function(){doCopy(JSON.stringify(result,null,2),this,"JSONをコピー");};
-  document.getElementById("resetBtn").onclick=reset;
-  resultEl.scrollIntoView({behavior:"smooth"});
-}
-
-function doCopy(txt, btn, defaultLabel){
-  function ok(){btn.textContent="コピーしました ✓";setTimeout(function(){btn.textContent=defaultLabel;},1800);}
-  if(navigator.clipboard && window.isSecureContext){
-    navigator.clipboard.writeText(txt).then(ok).catch(function(){legacy(txt,btn,ok);});
-  } else { legacy(txt,btn,ok); }
-}
-function legacy(txt, btn, ok){
-  try{
-    var ta=document.createElement("textarea");
-    ta.value=txt; ta.style.position="fixed"; ta.style.opacity="0";
-    document.body.appendChild(ta); ta.focus(); ta.select();
-    var done=document.execCommand("copy"); document.body.removeChild(ta);
-    if(done){ok();return;}
-  }catch(e){}
-  var out=document.getElementById("out"); if(out){out.focus();out.select();}
-  showErr("自動コピーがブロックされました。下の枠内を全選択してコピーしてください。");
-}
-
-function reset(){
-  messages=[{role:"assistant",content:GREETING}]; done=false; result=null;
-  resultEl.style.display="none"; resultEl.innerHTML="";
-  inputbar.style.display="block";
-  inputbar.innerHTML =
-    '<div class="inputrow"><textarea id="msg" rows="1" placeholder="ここに入力（Enterで送信 / Shift+Enterで改行）"></textarea>'+
-    '<button class="btn primary" id="send">送信</button></div>'+
-    '<div class="meta"><span>「特になし」でも大丈夫です</span>'+
-    '<button class="link" id="finishLink">もう十分／まとめる →</button></div>';
-  bindInput(); showErr(""); renderChat();
-}
-
-function bindInput(){
-  msgEl=document.getElementById("msg"); sendBtn=document.getElementById("send");
-  finishLink=document.getElementById("finishLink");
-  sendBtn.onclick=send;
-  msgEl.addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}});
-  finishLink.onclick=function(){if(messages.some(function(m){return m.role==="user";})){enterDone();finalize();}};
-  msgEl.focus();
-}
-
-bindInput();
-renderChat();
-</script>
-</body>
-</html>
