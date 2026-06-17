@@ -57,8 +57,9 @@
   .ml-auto{margin-left:auto}
   .copyarea{border-top:1px solid var(--line);padding:16px 20px}
   .copyarea .hint{color:var(--inkSoft);font-size:12px;margin-bottom:6px}
-  #out{width:100%;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:8px 12px;
-    font-size:12px;line-height:1.6;font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--paper);color:var(--ink);outline:none}
+  #out{width:100%;border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin:0;
+    font-size:12px;line-height:1.6;font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--paper);color:var(--ink);
+    white-space:pre-wrap;word-break:break-word;user-select:text;-webkit-user-select:text}
   .foot{color:var(--inkSoft);font-size:11px;text-align:center;margin-top:20px;line-height:1.6}
 </style>
 </head>
@@ -273,11 +274,12 @@ function renderResult(){
     '</div>'+
     '<div class="copyarea">'+
       '<div class="hint">うまくコピーできないときは、下の枠内をタップ→全選択してコピーしてください</div>'+
-      '<textarea id="out" rows="8" readonly></textarea>'+
+      '<pre id="out"></pre>'+
     '</div>';
 
-  document.getElementById("out").value = plainText(result);
-  document.getElementById("out").onfocus = function(){this.select();};
+  var outEl = document.getElementById("out");
+  outEl.textContent = plainText(result);
+  outEl.onclick = function(){ selectEl(outEl); };
   var tb=document.getElementById("tagbox"), tt=document.getElementById("tagToggle");
   tt.onclick=function(){var open=tb.style.display!=="none";tb.style.display=open?"none":"grid";tt.textContent=open?"分析タグ（システム用）を表示":"分析タグを隠す";};
   document.getElementById("copyText").onclick=function(){doCopy(plainText(result),this,"コピペ用テキストをコピー");};
@@ -300,8 +302,15 @@ function legacy(txt, btn, ok){
     var done=document.execCommand("copy"); document.body.removeChild(ta);
     if(done){ok();return;}
   }catch(e){}
-  var out=document.getElementById("out"); if(out){out.focus();out.select();}
+  var out=document.getElementById("out"); if(out){ selectEl(out); }
   showErr("自動コピーがブロックされました。下の枠内を全選択してコピーしてください。");
+}
+
+function selectEl(el){
+  try{
+    var range=document.createRange(); range.selectNodeContents(el);
+    var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+  }catch(e){}
 }
 
 function reset(){
