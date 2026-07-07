@@ -84,7 +84,22 @@
 
   .actions{border-top:1px solid var(--line);background:var(--paper);padding:16px 20px;display:flex;flex-wrap:wrap;gap:8px}
   .ml-auto{margin-left:auto}
-  .copyarea{border-top:1px solid var(--line);padding:16px 20px}
+  /* 見やすいサマリー */
+  .summary{border-top:1px solid var(--line);padding:6px 20px 8px}
+  .ssection{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--accent);text-transform:uppercase;padding:16px 0 6px;border-bottom:1px solid var(--accentSoft);margin-bottom:2px}
+  .srow{display:grid;grid-template-columns:120px 1fr;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line);align-items:start}
+  .srow:last-child{border-bottom:none}
+  .skey{font-size:11px;color:var(--inkSoft);font-weight:700;line-height:1.55;padding-top:3px}
+  .sval{font-size:14px;color:var(--ink);line-height:1.6}
+  .sval.empty{color:#B4B0A6}
+  .sbadge{display:inline-block;font-size:9px;font-weight:700;color:var(--amber);border:1px solid var(--amber);border-radius:6px;padding:0 4px;margin-left:6px;vertical-align:middle;line-height:1.6}
+  .pill{display:inline-block;background:var(--accentSoft);color:var(--accentDeep);border-radius:999px;padding:3px 11px;font-size:12px;font-weight:600;margin:2px 5px 2px 0}
+  .copyarea{border-top:1px solid var(--line);padding:0}
+  .copyarea > summary{cursor:pointer;padding:14px 20px;font-size:13px;font-weight:600;color:var(--accentDeep);list-style:none;background:var(--paper)}
+  .copyarea > summary::-webkit-details-marker{display:none}
+  .copyarea > summary::before{content:"▸ ";color:var(--accent)}
+  .copyarea[open] > summary::before{content:"▾ "}
+  .copyinner{padding:8px 20px 16px}
   .copyarea .hint{color:var(--inkSoft);font-size:12px;margin-bottom:6px}
   .out{width:100%;border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin:0 0 12px;
     font-size:12px;line-height:1.6;font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--paper);color:var(--ink);
@@ -141,7 +156,7 @@
 
 <script>
 /* ===== 設定：ここだけ書き換える ===== */
-var GAS_URL = "https://script.google.com/macros/s/AKfycby912GXLyc06PVVVtu2SDJPdddP_B1SjU_91k1LnJ6WvWSblNCPq_wAdPWTjS1y2XSt/exec";
+var GAS_URL = "https://script.google.com/macros/s/AKfycby-XFAiDsf6BJ04CsEp1v0JoDN0pKCCA8HX7Tf9aKnRALzQANkdrk1uV03hYgMACUM/exec";
 var ACCESS_TOKEN = "SIP2026"; // GASのACCESS_TOKENを設定した場合のみ同じ合言葉を入れる
 var ENABLE_SHEET_APPEND = true; // GAS側に append ハンドラを追加したら true のまま。未対応ならボタンはエラー表示になるだけ
 /* =================================== */
@@ -352,23 +367,25 @@ function renderResult(){
     '</div>'+
     '<details class="review" id="review"><summary>推定した内容を確認・修正する（任意・そのまま送信でもOK）</summary>'+
       '<div class="reviewbody" id="reviewBody"></div></details>'+
+    '<div class="summary" id="summary"></div>'+
     '<div class="actions">'+
       (ENABLE_SHEET_APPEND?'<button class="btn primary" id="appendBtn">スプレッドシートに反映</button>':'')+
-      '<button class="btn outline" id="copyRow">1行コピー（貼り付け用）</button>'+
+      '<button class="btn outline" id="copyRow">1行コピー（スプレッドシート用）</button>'+
       '<button class="btn ghost" id="copyForms">Forms用テキストをコピー</button>'+
       '<button class="btn ghost ml-auto" id="resetBtn">別のファクトを追加</button>'+
     '</div>'+
-    '<div class="copyarea">'+
-      '<div class="hint">スプレッドシート1行（タブ区切り）。うまくコピーできないときは枠内をタップ→全選択してコピー。</div>'+
+    '<details class="copyarea" id="copyarea"><summary>コピー用の生テキストを表示（手動貼り付け用）</summary>'+
+    '<div class="copyinner">'+
+      '<div class="hint">スプレッドシート1行（タブ区切り）。枠内をタップ→全選択でコピー。</div>'+
       '<pre class="out" id="outRow"></pre>'+
-      '<div class="hint">Forms用テキスト（読みやすい整形）。</div>'+
+      '<div class="hint">Forms用テキスト。</div>'+
       '<pre class="out" id="outForms"></pre>'+
-    '</div>';
+    '</div></details>';
 
   buildReview();
   refreshOutputs();
 
-  document.getElementById("copyRow").onclick=function(){doCopy(buildTSV(),this,"1行コピー（貼り付け用）");};
+  document.getElementById("copyRow").onclick=function(){doCopy(buildTSV(),this,"1行コピー（スプレッドシート用）");};
   document.getElementById("copyForms").onclick=function(){doCopy(buildForms(),this,"Forms用テキストをコピー");};
   document.getElementById("resetBtn").onclick=reset;
   var ab=document.getElementById("appendBtn"); if(ab) ab.onclick=appendToSheet;
@@ -426,8 +443,45 @@ function buildReview(){
 function refreshOutputs(){
   var vf=document.getElementById("v_fact"), vi=document.getElementById("v_insight");
   if(vf) vf.textContent=result.fact||"—"; if(vi) vi.textContent=result.insight||"—";
+  renderSummary();
   document.getElementById("outRow").textContent=buildTSV();
   document.getElementById("outForms").textContent=buildForms();
+}
+
+/* 人が読む用の見やすいサマリー（fact/insightは上部で表示済みなので分類項目のみ） */
+function renderSummary(){
+  var host=document.getElementById("summary"); if(!host) return;
+  function estBadge(k){return result.est.indexOf(k)>=0?'<span class="sbadge">推定</span>':"";}
+  function valSingle(v){return v?esc(v):'<span class="sval empty">—</span>';}
+  function valMulti(a){a=a||[];return a.length?a.map(function(x){return '<span class="pill">'+esc(x)+'</span>';}).join(""):'<span class="sval empty">—</span>';}
+  function row(label,valHtml,badge){
+    return '<div class="srow"><div class="skey">'+esc(label)+(badge||"")+'</div><div class="sval">'+valHtml+'</div></div>';
+  }
+
+  var html="";
+  // 立場
+  html+='<div class="ssection">立場</div>';
+  html+=row("職務", (role.job&&role.job.length)?role.job.map(function(x){return '<span class="pill">'+esc(x)+'</span>';}).join(""):'<span class="sval empty">未選択</span>');
+  html+=row("関わる相手", valSingle(role.counterpart));
+
+  // 状況
+  html+='<div class="ssection">状況の分類</div>';
+  html+=row("状態", valSingle(result.state), estBadge("state"));
+  html+=row("タイミング", valSingle(result.timing), estBadge("timing"));
+  html+=row("頻度", valSingle(result.frequency), estBadge("frequency"));
+  html+=row("他現場でも", valSingle(result.elsewhere), estBadge("elsewhere"));
+  html+=row("場面", valSingle(result.scene), estBadge("scene"));
+  html+=row("把握経路", valSingle(result.how), estBadge("how"));
+
+  // 領域・タグ
+  html+='<div class="ssection">領域・関連タグ</div>';
+  html+=row("領域が分かるか", valSingle(result.domain_known), estBadge("domain_known"));
+  html+=row("業務領域", valMulti(result.domains), estBadge("domains"));
+  if(result.dept) html+=row("部署・担当", valSingle(result.dept), estBadge("dept"));
+  html+=row("関連要素", valMulti(result.factors), estBadge("factors"));
+  html+=row("価値", valMulti(result.values), estBadge("values"));
+
+  host.innerHTML=html;
 }
 
 function joinMulti(a){a=a||[];return a.length?a.join(";")+";":"";}
